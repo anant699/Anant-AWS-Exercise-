@@ -1,0 +1,74 @@
+'use strict';
+
+const AWS = require('aws-sdk');
+const dynamodb = new AWS.DynamoDB.DocumentClient();
+
+exports.handler = (event, context, callback) => {
+    var dataMap;
+    
+    BuildString();
+    WriteData(); 
+    
+    function BuildString()
+    {
+         // Standard application values:
+        var PhoneNumber = event.Details.ContactData.Phone_Number;
+        var VanityNumber = event.Details.ContactData.Vanity_Number;
+       
+       // Custom application values:
+        var attMap = event.Details.ContactData.Attributes;        
+
+        // Build data map of all values
+        dataMap = {
+            Phone_Number: contactID,
+            Vanity_Number: channel,
+               };
+
+        // "r_" to identify fields that need to be saved to the database
+        //
+        for(var attributename in attMap)
+        {
+            console.log(JSON.stringify(attributename))
+            console.log(attributename+": "+attMap[attributename]);
+            if(attributename.substring(0,2) == "r_")
+            {
+                console.log("Report attribute added: " + attributename);
+                dataMap[attributename] = attMap[attributename];
+            }
+            else
+            {
+                console.log("Attribute not added: " + attributename);
+            }
+        }
+        
+        console.log('Received event:', JSON.stringify(event, null, 2));
+        console.log("Getting data");
+        console.log("Data received: " + JSON.stringify(dataMap));
+
+    }
+
+    function WriteData()
+    {
+        var docClient = new AWS.DynamoDB.DocumentClient();
+        var table = "data-dip-table";
+
+        //id_val = 1
+        var params = {
+            TableName: table,
+            Item: dataMap   
+        };
+
+    
+        docClient.put(params, function(err, data) {
+            if (err) {
+                callback(null, JSON.stringify(err, null, 2));
+                console.log(JSON.stringify(err, null, 2));
+                context.fail("Unable to add item. Error JSON:", JSON.stringify(err, null, 2));
+            }
+            else
+            {
+                callback(null, {});
+            }
+        });
+    }
+};
